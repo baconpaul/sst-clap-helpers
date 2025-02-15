@@ -44,12 +44,35 @@ namespace sst::clap_juce_shim
 {
 namespace details
 {
+#if JUCE_WINDOWS
+static std::weak_ptr<juce::detail::WindowsHooks> g_winHooks;
+static std::mutex g_winHooksMutex;
+#endif
+
 struct Implementor
 {
 #if JUCE_WINDOWS
-    juce::detail::WindowsHooks hooks;
+    std::shared_ptr<juce::detail::WindowsHooks> winHooks;;
 #endif
 
+    Implementor()
+    {
+        TRACE;
+#if JUCE_WINDOWS
+        {
+            std::lock_guard<std::mutex> lgM(g_winHooksMutex);
+            if (auto wh = g_winHooks.lock())
+            {
+                winHooks = wh;
+            }
+            else
+            {
+                winHooks = std::make_shared<juce::detail::WindowsHooks>();
+                g_winHooks = winHooks;
+            }
+        }
+#endif
+    }
     struct ImplParent : juce::Component
     {
         std::string displayName;
